@@ -16,6 +16,7 @@ onreg = {}
 if FLASK_DEBUG:
 	from pprint import pprint
 	pprint(qna)
+	print("FLASK_DEBUG: {0}\nTOKEN: {1}\n".format(FLASK_DEBUG, TOKEN))
 
 @app.route('/callback', methods=['POST'])
 def callback():
