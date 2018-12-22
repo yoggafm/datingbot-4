@@ -19,22 +19,13 @@ if FLASK_DEBUG:
 	print("FLASK_DEBUG: {0}\nTOKEN: {1}\n".format(FLASK_DEBUG, TOKEN))
 
 @app.route('/callback', methods=['POST'])
-def callback():
+def processing():
 	data = request.get_json()
-	if 'type' in data and data['type'] == 'confirmation':
-		if 'group_id' in data:
-			if data['group_id'] == GROUP_ID:
-				return CONFIRM_TOKEN
-			else:
-				return 'Bad group_id', status.HTTP_401_UNAUTHORIZED
-		else:
-			return 'Provide group_id', status.HTTP_401_UNAUTHORIZED
-	return 'Bad request', status.HTTP_400_BAD_REQUEST 
-
-@app.route('/new_message', methods=['POST'])
-def new_message():
-	data = request.get_json()
-	if 'type' in data and data['type'] == 'message_new':
+	if 'type' not in data.keys():
+		return 'not vk'
+	if data['type'] == 'confirmation':
+		return CONFIRM_TOKEN
+	if data['type'] == 'message_new':
 		if 'object' in data and 'user_id' in data['object'] and \
 								'body' in data['object']:
 			user_id = data['object']['user_id']
