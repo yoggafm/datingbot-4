@@ -1,7 +1,7 @@
 import os
 import vk
 import json
-from flask import Flask, request, json, Response
+from flask import Flask, request, json
 from flask_api import FlaskAPI, status
 import vkapi
 from settings import * 
@@ -18,7 +18,7 @@ if FLASK_DEBUG:
 	pprint(qna)
 	print("FLASK_DEBUG: {0}\nTOKEN: {1}\n".format(FLASK_DEBUG, TOKEN))
 
-@app.route('/callback', methods=['POST'])
+@app.route('/', methods=['POST'])
 def processing():
 	data = request.get_json()
 	if 'type' not in data.keys():
