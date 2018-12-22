@@ -81,6 +81,7 @@ def processing():
 				# That was last question
 				onreg.pop(user_id)
 				if FLASK_DEBUG: print("End of registration.")
+				vkapi.send_message(str(user_id), TOKEN, 'До новых встреч!')
 		else:
 			if '/dating' in body:
 				onreg[user_id] = 0
