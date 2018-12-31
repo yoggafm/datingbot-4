@@ -1,8 +1,10 @@
+import requests
 from flask_api import status
 from sqlite3 import IntegrityError, OperationalError, ProgrammingError
 import vk
 from db import qna
-from settings import FLASK_DEBUG, TOKEN, VK_API_VERSION
+from settings import FLASK_DEBUG, TOKEN, VK_API_VERSION, VK_API_URL
+if FLASK_DEBUG: from pprint import pprint
 
 session = vk.Session()
 api = vk.API(session, v=VK_API_VERSION)
@@ -14,8 +16,9 @@ def send_message(user_id, token, message, attachment=""):
 class registration(object):
     "Methods related to dating registration"
 
-    def __init__(self, user_id, start=True):
+    def __init__(self, user_id, dbc, start=True):
         self.user_id = user_id
+        self.dbc = dbc
         self.step = 0
         if start: self.start()
 
@@ -23,10 +26,14 @@ class registration(object):
         return "uuid {0} ({1} step)".format(self.user_id, self.step)
 
     def start(self):
-        question = qna[0]['q']
-        options = '\n'.join(qna[0]['a'])
-        if FLASK_DEBUG: print('{0}\n{1}'.format(question, options))
-        send_message(str(self.user_id), TOKEN, '{0}\n{1}'.format(question, options))
+        # init cache
+        first, last = self.get_name_from_vk()
+        self.dbc.cache[self.user_id] = {
+            "first_name": first,
+            "last_name": last
+        }
+        # ask first question
+        self.ask_current_question()
 
     def ask_current_question(self):
         question = qna[self.step]['q']
@@ -37,6 +44,28 @@ class registration(object):
             options = ''
         if FLASK_DEBUG: print('{0}\n{1}\n'.format(question, options))
         send_message(str(self.user_id), TOKEN, '{0}\n{1}'.format(question, options))
+
+    def get_name_from_vk(self):
+        url = "{}users.get".format(VK_API_URL)
+        params = {
+            "user_id":self.user_id,
+            "fields":["first_name","last_name"],
+            "access_token": TOKEN,
+            "v":VK_API_VERSION
+        }
+        try:
+            resp = requests.get(url, params=params).json()
+            if FLASK_DEBUG:
+                print("GET " + url)
+                pprint(params)
+                pprint(resp)
+            if 'response' in resp:
+                data = resp['response'][0]
+                return data["first_name"], data["last_name"]
+            return None, None
+        except Exception as e:
+            if FLASK_DEBUG: print(e)
+            return None, None
 
     def validate_answer(self, body):
         "Validate user's answer to reistration questions"
@@ -67,21 +96,21 @@ class registration(object):
         if FLASK_DEBUG: print("You chose variant \"{0}\"".format(answer))
         return answer
 
-    def process_answer(self, dbc, answer):
+    def process_answer(self, answer):
         "Execute actions required after question has been answered"
         # save to cache
         col = qna[self.step]['f']
-        dbc.cache[self.user_id][col] = answer
+        self.dbc.cache[self.user_id][col] = answer
         # ask next question
         self.step += 1
         self.ask_current_question()
 
-    def process_last_answer(self, dbc, answer):
+    def process_last_answer(self, answer):
         if answer < 2:
             # save changes to db
             try:
-                dbc.create_user(self.user_id)
-                dbc.save(self.user_id)
+                self.dbc.create_user(self.user_id)
+                self.dbc.save(self.user_id)
             except ProgrammingError as err:
                 if FLASK_DEBUG: print(err)
                 send_message(str(self.user_id), TOKEN,
@@ -113,3 +142,4 @@ class registration(object):
             if FLASK_DEBUG: print("Updating.")
             send_message(str(self.user_id), TOKEN, "Not Implemented")
             return status.HTTP_501_NOT_IMPLEMENTED
+

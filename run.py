@@ -52,9 +52,9 @@ def processing():
                 return 'Not Found', answer
 
             if  user.step < len(db.qna)-1:
-                user.process_answer(dbc, answer)
+                user.process_answer(answer)
             else:
-                resp = user.process_last_answer(dbc, answer)
+                resp = user.process_last_answer(answer)
                 if resp is status.HTTP_200_OK:
                     del user
                 else:
@@ -62,9 +62,7 @@ def processing():
         else:
             if '/dating' in body:
                 # init registration for this user
-                onreg[user_id] = vkapi.registration(user_id)
-                # init cache
-                dbc.cache[user_id] = {}  #TODO: get name and gender from vk
+                onreg[user_id] = vkapi.registration(user_id, dbc)
                 if FLASK_DEBUG:
                     print("Adding object to onreg:")
                     pprint(onreg[user_id])
