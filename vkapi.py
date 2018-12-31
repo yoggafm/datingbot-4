@@ -112,18 +112,18 @@ class registration(object):
                 self.dbc.create_user(self.user_id)
                 self.dbc.save(self.user_id)
             except ProgrammingError as err:
-                if FLASK_DEBUG: print(err)
+                if FLASK_DEBUG: raise(err)
                 send_message(str(self.user_id), TOKEN,
                     'Похоже, ты нашел ошибку у меня в коде, мой друг! ' \
                     'Срочно напиши сюда (id218786773) с как можно более подробным описанием проблемы.')
                 return status.HTTP_500_INTERNAL_SERVER_ERROR
             except OperationalError as err:
-                if FLASK_DEBUG: print(err)
+                if FLASK_DEBUG: raise(err)
                 send_message(str(self.user_id), TOKEN,
                     'Произошла ошибка при сохранении. Попробуй заново через какое-то время.')
                 return status.HTTP_500_INTERNAL_SERVER_ERROR
             except IntegrityError as err:
-                if FLASK_DEBUG: print(err)
+                if FLASK_DEBUG: raise(err)
                 send_message(str(self.user_id), TOKEN,
                     'Твоя анкета уже есть в базе данных!.')
                 # do not return error

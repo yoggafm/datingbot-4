@@ -74,6 +74,9 @@ def processing():
 #TODO: move error handlers to errors.py
 @app.errorhandler(500)
 def server_error_handler(error):
+    data = request.get_json()
+    if 'object' in data and 'user_id' in data['object']:
+            user_id = data['object']['user_id']
     vkapi.send_message(str(user_id), TOKEN, \
         "Проблемесы на сервере. Сорян :( Попробуй "\
         "еще раз, а если не поможет, дай знать "\
