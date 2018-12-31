@@ -1,5 +1,10 @@
 import sqlite3
-from settings import DB_FILE, FLASK_DEBUG
+import json
+from settings import DB_FILE, QNA_FILE, FLASK_DEBUG
+
+# load question
+with open(QNA_FILE, 'r') as f:
+    qna = json.loads(f.read())
 
 class DbConnector(object):
     def __init__(self):

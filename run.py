@@ -1,25 +1,24 @@
 import os
 import vk
-import json
 from flask import Flask, request, json
 from flask_api import FlaskAPI, status
 import vkapi
 import db
-from settings import *
+import settings
+from settings import FLASK_DEBUG, TOKEN, PORT
 
-
+# create app
 app = FlaskAPI(__name__)
-with open(QNA_FILE, 'r') as f:
-    qna = json.loads(f.read())
-# ongoing registration
+# ongoing registration counter
 onreg = {}
 # DB connecctor
 dbc = db.DbConnector()
 
 if FLASK_DEBUG:
     from pprint import pprint
-    pprint(qna)
-    print("FLASK_DEBUG: {0}\nTOKEN: {1}\n".format(FLASK_DEBUG, TOKEN))
+    pprint(db.qna)
+    for var in [v for v in vars(settings) if v.isupper()]:
+        print("{0}: {1}\n".format(var, getattr(settings, var)))
 
 @app.route('/', methods=['POST'])
 def processing():
@@ -27,7 +26,7 @@ def processing():
     if 'type' not in data.keys():
         return 'not vk'
     if data['type'] == 'confirmation':
-        return CONFIRM_TOKEN
+        return settings.CONFIRM_TOKEN
     if data['type'] == 'message_new':
         if 'object' in data and 'user_id' in data['object'] and \
                                 'body' in data['object']:
@@ -38,87 +37,39 @@ def processing():
 
         if user_id in onreg:
             if FLASK_DEBUG:
-                print(onreg)
+                print("Onreg:")
+                print("---")
+                for uid in onreg:
+                    pprint(onreg[uid])
+                print("---")
+                print("DB cache:")
                 pprint(dbc.cache)
-                pprint(qna[onreg[user_id]])
-            # Process answer
-            options = qna[onreg[user_id]]['a']
-            answer = method_name = ''
-            if not options or body in options:
-                #TODO: proper encoding so everything could be stored as text
-                if options:
-                    # for choice options
-                    answer = int(body[:1])
-                else:
-                    # free text/photo
-                    answer = body
-                method_name = qna[onreg[user_id]]['f']
-            elif options:  # autocomplete, only when options available
-                for opt in options:
-                    if opt.startswith(body) or opt[3:] == body:
-                        answer = int(opt[:1])
-                        method_name = qna[onreg[user_id]]['f']
-                        break
-            if options and answer == '':
-                vkapi.send_message(str(user_id), TOKEN,\
-                    'Выбери, пожалуйста, из представленных '\
-                    'вариантов:{}\nМожешь просто скопипастить'\
-                    ' желаемый вариант и отправить, либо '\
-                    'только его начало.\nПример: для выборa '\
-                    'варианта "1) Брно" можно отправить: '
-                    '"1) Брно", "Брно", или "1", "1)", "1) Б" и т.д)'.format(
-                        '\n'.join(options)))
-                if FLASK_DEBUG: print("Illigitimate answer {}".format(body))
-                return 'Not Found', status.HTTP_404_NOT_FOUND
-            if FLASK_DEBUG:
-                msg = "You chose variant \"{0}\"".format(answer)
-                print(msg)
+                print("Current step:")
+                pprint(db.qna[onreg[user_id].step])
+            user = onreg[user_id]
+            answer = user.validate_answer(body)
+            if answer is status.HTTP_404_NOT_FOUND:
+                return 'Not Found', answer
 
-            if  onreg[user_id] < len(qna)-1:
-                # save to cache
-                col = method_name  #TODO rename
-                dbc.cache[user_id][col] = answer
-
-                # Ask next question
-                onreg[user_id] += 1
-                question = qna[onreg[user_id]]['q']
-                options = qna[onreg[user_id]]['a']
-                if type(options) == list:
-                    options = '\n'.join(options)
-                elif not options:
-                    options = ''
-                if FLASK_DEBUG: print('{0}\n{1}\n{2}'.format(onreg, question, options))
-                vkapi.send_message(str(user_id), TOKEN,
-                                       '{0}\n{1}'.format(question, options))
+            if  user.step < len(db.qna)-1:
+                user.process_answer(dbc, answer)
             else:
-                # That was last question
-                if answer < 2:
-                    # save changes to db
-                    dbc.create_user(user_id)
-                    dbc.save(user_id)
-                    onreg.pop(user_id)
-                    if FLASK_DEBUG: print("End of registration.")
-                    vkapi.send_message(str(user_id), TOKEN, 'До новых встреч!')
-                elif answer > 2:
-                    # abort
-                    onreg.pop(user_id)
-                    if FLASK_DEBUG: print("End of registration.")
-                    vkapi.send_message(str(user_id), TOKEN, "Ну и пошел нахуй тогда")
+                resp = user.process_last_answer(dbc, answer)
+                if resp is status.HTTP_200_OK:
+                    del user
                 else:
-                    #TODO: edit
-                    pass
+                    return 'Server Error', resp  # error
         else:
             if '/dating' in body:
-                onreg[user_id] = 0
+                # init registration for this user
+                onreg[user_id] = vkapi.registration(user_id)
+                # init cache
                 dbc.cache[user_id] = {}  #TODO: get name and gender from vk
-                question = qna[0]['q']
-                options = '\n'.join(qna[0]['a'])
                 if FLASK_DEBUG:
-                    print(onreg)
+                    print("Adding object to onreg:")
+                    pprint(onreg[user_id])
+                    print("DB cache:")
                     pprint(dbc.cache)
-                    print('{0}\n{1}'.format(question, options))
-                vkapi.send_message(str(user_id), TOKEN,
-                                   '{0}\n{1}'.format(question, options))
 
         return 'ok'
 
