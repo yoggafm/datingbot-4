@@ -36,8 +36,8 @@ class registration(object):
         self.ask_current_question()
 
     def ask_current_question(self):
-        question = qna[self.step]['q']
-        options = qna[self.step]['a']
+        question = qna[self.step]['question']
+        options = qna[self.step]['opts']
         if type(options) == list:
             options = '\n'.join(options)
         elif not options:
@@ -69,19 +69,19 @@ class registration(object):
 
     def validate_answer(self, body):
         "Validate user's answer to reistration questions"
-        options = qna[self.step]['a']
+        options = qna[self.step]['opts']
         answer = col = ''
         if options:
             # options
             for opt in options:
                 if opt.startswith(body) or opt[3:].startswith(body):
                     answer = int(opt[:1])
-                    col = qna[self.step]['f']
+                    col = qna[self.step]['user_field']
                     break
         else:
             # free text/photo
             answer = body
-            col = qna[self.step]['f']
+            col = qna[self.step]['user_field']
         if options and answer == '':
             send_message(str(self.user_id), TOKEN,\
                 'Выбери, пожалуйста, из представленных '\
@@ -99,7 +99,7 @@ class registration(object):
     def process_answer(self, answer):
         "Execute actions required after question has been answered"
         # save to cache
-        col = qna[self.step]['f']
+        col = qna[self.step]['user_field']
         self.dbc.cache[self.user_id][col] = answer
         # ask next question
         self.step += 1
@@ -109,6 +109,7 @@ class registration(object):
         if answer < 2:
             # save changes to db
             try:
+                self.dbc.connect()
                 self.dbc.create_user(self.user_id)
                 self.dbc.save(self.user_id)
             except ProgrammingError as err:
