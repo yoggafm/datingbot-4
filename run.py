@@ -23,10 +23,15 @@ if FLASK_DEBUG:
 @app.route('/', methods=['POST'])
 def processing():
     data = request.get_json()
+    if FLASK_DEBUG:
+        print("REQUEST ", end='')
+        pprint(data)
     if 'type' not in data.keys():
         return 'not vk'
     if data['type'] == 'confirmation':
         return settings.CONFIRM_TOKEN
+    if data['type'] == 'message_reply':
+        return 'reply'
     if data['type'] == 'message_new':
         if 'object' in data and 'user_id' in data['object'] and \
                                 'body' in data['object']:
@@ -68,8 +73,8 @@ def processing():
                     pprint(onreg[user_id])
                     print("DB cache:")
                     pprint(dbc.cache)
-
         return 'ok'
+    return 'unknown'
 
 #TODO: move error handlers to errors.py
 @app.errorhandler(500)

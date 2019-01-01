@@ -1,6 +1,6 @@
 import os
 
-FLASK_DEBUG = os.environ.get('FLASK_DEBUG', False)
+FLASK_DEBUG = os.environ.get('FLASK_DEBUG', False) != 0
 TOKEN = os.environ.get('TOKEN', '')
 GROUP_ID = os.environ.get('GROUP_ID', '')
 CONFIRM_TOKEN = os.environ.get('CONFIRM_TOKEN', '')
