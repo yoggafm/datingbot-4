@@ -35,15 +35,16 @@ class registration(object):
         # ask first question
         self.ask_current_question()
 
-    def ask_current_question(self):
+    def ask_current_question(self, prefix='', postfix='', attachment=''):
         question = qna[self.step]['question']
         options = qna[self.step]['opts']
         if type(options) == list:
             options = '\n'.join(options)
         elif not options:
             options = ''
-        if FLASK_DEBUG: print('{0}\n{1}\n'.format(question, options))
-        send_message(str(self.user_id), TOKEN, '{0}\n{1}'.format(question, options))
+        msg = '{0}\n{1}\n{2}\n{3}'.format(prefix, question, options, postfix)
+        if FLASK_DEBUG: print(msg)
+        send_message(str(self.user_id), TOKEN, msg, attachment)
 
     def get_name_from_vk(self):
         url = "{}users.get".format(VK_API_URL)
@@ -75,7 +76,7 @@ class registration(object):
             # options
             for opt in options:
                 if opt.startswith(body) or opt[3:].startswith(body):
-                    answer = int(opt[:1])
+                    answer = opt[:1]
                     col = qna[self.step]['user_field']
                     break
         else:
@@ -101,46 +102,55 @@ class registration(object):
         # save to cache
         col = qna[self.step]['user_field']
         self.dbc.cache[self.user_id][col] = answer
-        # ask next question
+        # next step
         self.step += 1
-        self.ask_current_question()
 
-    def process_last_answer(self, answer):
-        if answer < 2:
-            # save changes to db
-            try:
-                self.dbc.connect()
-                self.dbc.create_user(self.user_id)
-                self.dbc.save(self.user_id)
-            except ProgrammingError as err:
-                if FLASK_DEBUG: raise(err)
-                send_message(str(self.user_id), TOKEN,
-                    'Похоже, ты нашел ошибку у меня в коде, мой друг! ' \
-                    'Срочно напиши сюда (id218786773) с как можно более подробным описанием проблемы.')
-                return status.HTTP_500_INTERNAL_SERVER_ERROR
-            except OperationalError as err:
-                if FLASK_DEBUG: raise(err)
-                send_message(str(self.user_id), TOKEN,
-                    'Произошла ошибка при сохранении. Попробуй заново через какое-то время.')
-                return status.HTTP_500_INTERNAL_SERVER_ERROR
-            except IntegrityError as err:
-                if FLASK_DEBUG: raise(err)
-                send_message(str(self.user_id), TOKEN,
-                    'Твоя анкета уже есть в базе данных!.')
-                # do not return error
-            if FLASK_DEBUG: print("End of registration.")
-            send_message(str(self.user_id), TOKEN, 'До новых встреч!')
-            return status.HTTP_200_OK
+    def view(self):
+        "View user's name and photo"
+        first_name = self.dbc.cache[self.user_id]['first_name']
+        photo = self.dbc.cache[self.user_id]['photo']
+        city_id = self.dbc.cache[self.user_id]['city_id']
+        self.dbc.connect()
+        city = self.dbc.get_name("cities", city_id)
+        self.dbc.close()
+        if FLASK_DEBUG: print("{0}, {1}".format(first_name, city))
+        return "{0}, {1}".format(first_name, city), photo 
+        
+    def commit(self):
+        "Commit changes from cache to db"
+        try:
+            self.dbc.connect()
+            self.dbc.create_user(self.user_id)
+            self.dbc.save(self.user_id)
+        except ProgrammingError as err:
+            if FLASK_DEBUG: raise(err)
+            send_message(str(self.user_id), TOKEN,
+                'Похоже, ты нашел ошибку у меня в коде, мой друг! ' \
+                'Срочно напиши сюда (id218786773) с как можно более подробным описанием проблемы.')
+            return status.HTTP_500_INTERNAL_SERVER_ERROR
+        except OperationalError as err:
+            if FLASK_DEBUG: raise(err)
+            send_message(str(self.user_id), TOKEN,
+                'Произошла ошибка при сохранении. Попробуй заново через какое-то время.')
+            return status.HTTP_500_INTERNAL_SERVER_ERROR
+        except IntegrityError as err:
+            if FLASK_DEBUG:
+                print("user {} is already registered".format(self.user_id))
+            send_message(str(self.user_id), TOKEN,
+                'Твоя анкета уже есть в базе данных!.')
+            # do not return error
+        if FLASK_DEBUG: print("End of registration.")
+        return status.HTTP_200_OK
 
-        elif answer == 2:
-            # abort
-            if FLASK_DEBUG: print("End of registration - aborted.")
-            send_message(str(self.user_id), TOKEN, "Ну и пошел нахуй тогда")
-            return status.HTTP_200_OK
+    def abort(self):
+        "Abort registration"
+        if FLASK_DEBUG: print("End of registration - aborted.")
+        send_message(str(self.user_id), TOKEN, "Ну и пошел нахуй тогда")
+        return status.HTTP_200_OK
 
-        else:
-            #TODO: edit
-            if FLASK_DEBUG: print("Updating.")
-            send_message(str(self.user_id), TOKEN, "Not Implemented")
-            return status.HTTP_501_NOT_IMPLEMENTED
+    def edit(self):
+        #TODO: edit
+        if FLASK_DEBUG: print("Updating.")
+        send_message(str(self.user_id), TOKEN, "Not Implemented")
+        return status.HTTP_501_NOT_IMPLEMENTED
 

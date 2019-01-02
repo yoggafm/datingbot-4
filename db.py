@@ -68,8 +68,10 @@ class DbConnector(object):
             if FLASK_DEBUG:
                 print("Calling {0} with {1} args".format(func, args))
             self.connect_cursor()
-            func(self, *args)
+            ret = func(self, *args)
             self.close_cursor()
+            if ret:
+                return ret
         return wrapper
 
     @sqlquery
@@ -87,6 +89,13 @@ class DbConnector(object):
               '''.format(table_name, ', '.join([field + ' ' + fields[field] \
                                                 for field in fields]))
         self.cursor.execute(sql)
+
+    @sqlquery
+    def get_name(self, table, uuid):
+        sql = "SELECT name FROM {0} WHERE id = {1}".format(table, uuid)
+        self.cursor.execute(sql)
+        row = self.cursor.fetchone()
+        return row[0]
     
     @sqlquery
     def create_user(self, user_id):

@@ -51,19 +51,39 @@ def processing():
                 pprint(dbc.cache)
                 print("Current step:")
                 pprint(db.qna[onreg[user_id].step])
+
             user = onreg[user_id]
+            if '/end' in body:
+                clear(user)
+                return 'ok'
             answer = user.validate_answer(body)
+
             if answer is status.HTTP_404_NOT_FOUND:
                 return 'Not Found', answer
 
             if  user.step < len(db.qna)-1:
                 user.process_answer(answer)
-            else:
-                resp = user.process_last_answer(answer)
+                if user.step < len(db.qna)-1:
+                    user.ask_current_question()
+                else:
+                    # before final step
+                    postfix, photo = user.view()
+                    user.ask_current_question(postfix=postfix,attachment=photo)
+            # final step
+            elif int(answer) < 2:
+                # save and finish
+                resp = user.commit()
                 if resp is status.HTTP_200_OK:
-                    del user
+                    clear(user)
                 else:
                     return 'Server Error', resp  # error
+            elif int(answer) > 2:
+                # edit
+                user.edit()
+            else:
+                # abort
+                user.abort()
+                clear(user)
         else:
             if '/dating' in body:
                 # init registration for this user
@@ -75,6 +95,11 @@ def processing():
                     pprint(dbc.cache)
         return 'ok'
     return 'unknown'
+
+def clear(user):
+    vkapi.send_message(str(user.user_id), TOKEN, 'До новых встреч!')
+    del onreg[user.user_id]
+    del user
 
 #TODO: move error handlers to errors.py
 @app.errorhandler(500)
