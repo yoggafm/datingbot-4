@@ -41,17 +41,6 @@ def processing():
             return 'Bad request', status.HTTP_400_BAD_REQUEST
 
         if user_id in onreg:
-            if FLASK_DEBUG:
-                print("Onreg:")
-                print("---")
-                for uid in onreg:
-                    pprint(onreg[uid])
-                print("---")
-                print("DB cache:")
-                pprint(dbc.cache)
-                print("Current step:")
-                pprint(db.qna[onreg[user_id].step])
-
             user = onreg[user_id]
             if '/end' in body:
                 clear(user)
@@ -84,6 +73,17 @@ def processing():
                 # abort
                 user.abort()
                 clear(user)
+            if FLASK_DEBUG:
+                print("Onreg:")
+                print("---")
+                for uid in onreg:
+                    pprint(onreg[uid])
+                print("---")
+                print("DB cache:")
+                pprint(dbc.cache)
+                print("Current step:")
+                pprint(db.qna[onreg[user_id].step])
+
         else:
             if '/dating' in body:
                 # init registration for this user
