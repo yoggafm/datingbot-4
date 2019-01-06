@@ -81,8 +81,9 @@ def processing():
                 print("---")
                 print("DB cache:")
                 pprint(dbc.cache)
-                print("Current step:")
-                pprint(db.qna[onreg[user_id].step])
+                if user_id in onreg:
+                    print("Current step:")
+                    pprint(db.qna[onreg[user_id].step])
 
         else:
             if '/dating' in body:
@@ -98,6 +99,7 @@ def processing():
 
 def clear(user):
     vkapi.send_message(str(user.user_id), TOKEN, 'До новых встреч!')
+    del dbc.cache[user.user_id]
     del onreg[user.user_id]
     del user
 

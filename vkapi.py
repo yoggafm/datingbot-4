@@ -109,12 +109,14 @@ class registration(object):
         "View user's name and photo"
         first_name = self.dbc.cache[self.user_id]['first_name']
         photo = self.dbc.cache[self.user_id]['photo']
+        description = self.dbc.cache[self.user_id]['description']
         city_id = self.dbc.cache[self.user_id]['city_id']
         self.dbc.connect()
         city = self.dbc.get_name("cities", city_id)
         self.dbc.close()
-        if FLASK_DEBUG: print("{0}, {1}".format(first_name, city))
-        return "{0}, {1}".format(first_name, city), photo 
+        text = "{0}, {1}\n{2}".format(first_name, city, description)
+        if FLASK_DEBUG: print(text)
+        return text, photo 
         
     def commit(self):
         "Commit changes from cache to db"
