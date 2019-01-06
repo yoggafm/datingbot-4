@@ -99,9 +99,12 @@ def processing():
 
 def clear(user):
     vkapi.send_message(str(user.user_id), TOKEN, 'До новых встреч!')
-    del dbc.cache[user.user_id]
-    del onreg[user.user_id]
-    del user
+    try:
+        del dbc.cache[user.user_id]
+        del onreg[user.user_id]
+        del user
+    except KeyError:
+        pass
 
 #TODO: move error handlers to errors.py
 @app.errorhandler(500)
