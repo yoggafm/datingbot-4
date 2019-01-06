@@ -1,4 +1,5 @@
 import requests
+import re
 from flask_api import status
 from sqlite3 import IntegrityError, OperationalError, ProgrammingError
 import vk
@@ -79,19 +80,33 @@ class registration(object):
                     answer = opt[:1]
                     col = qna[self.step]['user_field']
                     break
+        elif qna[self.step]['user_field'] == 'photo':
+            # photo
+            match = re.search(r'photo[0-9]*_[0-9]*', body)
+            if match:
+                answer = match.group()
         else:
-            # free text/photo
+            # free text
             answer = body
             col = qna[self.step]['user_field']
-        if options and answer == '':
-            send_message(str(self.user_id), TOKEN,\
-                'Выбери, пожалуйста, из представленных '\
-                'вариантов:{}\nМожешь просто скопипастить'\
-                ' желаемый вариант и отправить, либо '\
-                'только его начало.\nПример: для выборa '\
-                'варианта "1) Брно" можно отправить: '
-                '"1) Брно", "Брно", или "1", "1)", "1) Б" и т.д)'.format(
-                    '\n'.join(options)))
+        if answer == '':
+            if options:
+                send_message(str(self.user_id), TOKEN,\
+                    'Выбери, пожалуйста, из представленных '\
+                    'вариантов:{}\nМожешь просто скопипастить'\
+                    ' желаемый вариант и отправить, либо '\
+                    'только его начало.\nПример: для выборa '\
+                    'варианта "1) Брно" можно отправить: '
+                    '"1) Брно", "Брно", или "1", "1)", "1) Б" '\
+                    'и т.д) '.format('\n'.join(options)))
+            else:
+                send_message(str(self.user_id), TOKEN,\
+                    'Eсли отправляешь фото, убедись, что ты '\
+                    'отправляешь именно ссылку на картинку, '\
+                    'не ее саму! (я - бот, я не умею сохранять '\
+                    'картинки :( , поэтому вот так).\nСсылка должна '\
+                    'быть на сервера vk.com и иметь вид типа '\
+                    'https://vk.com/photo1234567_1234567')
             if FLASK_DEBUG: print("Illigitimate answer {}".format(body))
             return status.HTTP_404_NOT_FOUND
         if FLASK_DEBUG: print("You chose variant \"{0}\"".format(answer))
