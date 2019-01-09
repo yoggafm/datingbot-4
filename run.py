@@ -45,8 +45,13 @@ def processing():
             if '/end' in body:
                 clear(user)
                 return 'ok'
-            answer = user.validate_answer(body)
-
+            if len(body):
+                answer = user.validate_answer(body=body)
+            elif 'attachments' in data['object']:
+                # attachment
+                if 'photo' in data['object']['attachments'][0]:
+                    photo = data['object']['attachments'][0]['photo']
+                    answer = user.validate_answer(photo=photo)
             if answer is status.HTTP_404_NOT_FOUND:
                 return 'Not Found', answer
 

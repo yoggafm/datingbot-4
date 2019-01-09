@@ -1,5 +1,8 @@
 import requests
+import random
 import re
+import string
+import os
 from flask_api import status
 from sqlite3 import IntegrityError, OperationalError, ProgrammingError
 import vk
@@ -8,10 +11,10 @@ from settings import FLASK_DEBUG, TOKEN, VK_API_VERSION, VK_API_URL
 if FLASK_DEBUG: from pprint import pprint
 
 session = vk.Session()
-api = vk.API(session, v=VK_API_VERSION)
+api = vk.API(session, access_token=TOKEN, v=VK_API_VERSION)
 
 def send_message(user_id, token, message, attachment=""):
-    api.messages.send(access_token=token, user_id=str(user_id), message=message,
+    api.messages.send(user_id=str(user_id), message=message,
                       attachment=attachment)
 
 class registration(object):
@@ -69,46 +72,79 @@ class registration(object):
             if FLASK_DEBUG: print(e)
             return None, None
 
-    def validate_answer(self, body):
+    def upload_photo(self, url):
+        # download
+        path = ''.join(random.choices(string.ascii_letters + string.digits,
+            k=16)) + '.jpg'
+        resp = requests.get(url)
+        if resp.status_code == status.HTTP_200_OK:
+            img = resp.raw.read()
+            with open(path,'wb') as f:
+                for chunk in resp:
+                    f.write(chunk)
+        else:
+            return status.HTTP_500_INTERNAL_SERVER_ERROR
+
+        # upload to server
+        upload_url = api.photos.getMessagesUploadServer(
+            peer_id=self.user_id)['upload_url']
+        if FLASK_DEBUG: print('upload_url = {}'.format(upload_url))
+        resp = requests.post(upload_url, files={'photo': open(path, 'rb')})
+        if resp.status_code != status.HTTP_200_OK:
+            return status.HTTP_500_INTERNAL_SERVER_ERROR
+        params = resp.json()
+        if FLASK_DEBUG: print('params = {}'.format(params))
+        resp = api.photos.saveMessagesPhoto(**params)
+        if not (len(resp) and 'owner_id' in resp[0] and 'id' in resp[0]):
+            return status.HTTP_500_INTERNAL_SERVER_ERROR
+        owner_id = resp[0]['owner_id']
+        photo_id = resp[0]['id']
+        # delete photo from our server
+        if os.path.exists(path):
+            os.remove(path)
+        return "photo{0}_{1}".format(owner_id, photo_id)
+
+    def validate_answer(self, body=None, photo=None):
         "Validate user's answer to reistration questions"
         options = qna[self.step]['opts']
         answer = col = ''
-        if options:
-            # options
-            for opt in options:
-                if opt.startswith(body) or opt[3:].startswith(body):
-                    answer = opt[:1]
-                    col = qna[self.step]['user_field']
-                    break
-        elif qna[self.step]['user_field'] == 'photo':
-            # photo
-            match = re.search(r'photo[0-9]*_[0-9]*', body)
-            if match:
-                answer = match.group()
-        else:
-            # free text
-            answer = body
-            col = qna[self.step]['user_field']
-        if answer == '':
+        if body:
             if options:
-                send_message(str(self.user_id), TOKEN,\
-                    'Выбери, пожалуйста, из представленных '\
-                    'вариантов:{}\nМожешь просто скопипастить'\
-                    ' желаемый вариант и отправить, либо '\
-                    'только его начало.\nПример: для выборa '\
-                    'варианта "1) Брно" можно отправить: '
-                    '"1) Брно", "Брно", или "1", "1)", "1) Б" '\
-                    'и т.д) '.format('\n'.join(options)))
+                # options
+                for opt in options:
+                    if opt.startswith(body) or opt[3:].startswith(body):
+                        answer = opt[:1]
+                        col = qna[self.step]['user_field']
+                        break
+                if answer == '':
+                    send_message(str(self.user_id), TOKEN,\
+                        'Выбери, пожалуйста, из представленных '\
+                        'вариантов:{}\nМожешь просто скопипастить'\
+                        ' желаемый вариант и отправить, либо '\
+                        'только его начало.\nПример: для выборa '\
+                        'варианта "1) Брно" можно отправить: '
+                        '"1) Брно", "Брно", или "1", "1)", "1) Б" '\
+                        'и т.д) '.format('\n'.join(options)))
+                    if FLASK_DEBUG: print("Illigitimate answer {}".format(body))
+                    return status.HTTP_404_NOT_FOUND
             else:
-                send_message(str(self.user_id), TOKEN,\
-                    'Eсли отправляешь фото, убедись, что ты '\
-                    'отправляешь именно ссылку на картинку, '\
-                    'не ее саму! (я - бот, я не умею сохранять '\
-                    'картинки :( , поэтому вот так).\nСсылка должна '\
-                    'быть на сервера vk.com и иметь вид типа '\
-                    'https://vk.com/photo1234567_1234567')
-            if FLASK_DEBUG: print("Illigitimate answer {}".format(body))
-            return status.HTTP_404_NOT_FOUND
+                # free text
+                answer = body
+                col = qna[self.step]['user_field']
+        if photo:
+            # photo
+            if type(photo) != dict:
+                if FLASK_DEBUG: print("Bad photo {}".format(photo))
+                return status.HTTP_404_NOT_FOUND
+            photo_keys = [ key for key in photo if key.startswith('photo_') ]
+            if not len(photo_keys):
+                if FLASK_DEBUG: print("Bad photo {}".format(photo))
+                return status.HTTP_404_NOT_FOUND
+            max_key = 'photo_' + str(max([int(key.strip('photo_')) \
+                for key in photo_keys]))
+            # upload to vk, returns photo<owner_id>_<photo_id>
+            answer = self.upload_photo(photo[max_key])
+ 
         if FLASK_DEBUG: print("You chose variant \"{0}\"".format(answer))
         return answer
 
@@ -130,7 +166,7 @@ class registration(object):
         city = self.dbc.get_name("cities", city_id)
         self.dbc.close()
         text = "{0}, {1}\n{2}".format(first_name, city, description)
-        if FLASK_DEBUG: print(text)
+        if FLASK_DEBUG: print(text); print(photo)
         return text, photo 
         
     def commit(self):
