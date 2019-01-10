@@ -96,7 +96,27 @@ class DbConnector(object):
         self.cursor.execute(sql)
         row = self.cursor.fetchone()
         return row[0]
-    
+
+    @sqlquery
+    def get_matches(self, user_id, city_id, goal_id, gender_id, lookfor_id):
+        sql = '''SELECT id, first_name, description, photo
+            FROM users WHERE city_id = {0} AND goal_id = {1} AND
+            lookfor_id IN ({2},3) AND id != {3}'''.format(city_id, goal_id,
+                gender_id, user_id)
+        if lookfor_id < 3:
+            # user does care about gender
+            sql += " AND gender_id = {}".format(lookfor_id)
+        self.cursor.execute(sql)
+        matches = self.cursor.fetchall()
+        return matches
+
+    @sqlquery
+    def get_user(self, user_id):
+        sql = "SELECT * FROM users WHERE id = {}".format(user_id)
+        self.cursor.execute(sql)
+        user = self.cursor.fetchone()
+        return user
+
     @sqlquery
     def create_user(self, user_id):
         sql = "INSERT INTO users (id) VALUES ('{}')".format(user_id)
@@ -106,6 +126,11 @@ class DbConnector(object):
     def update_user(self, user_id, field, value):
         sql = '''UPDATE users SET {0}='{1}'
             WHERE id={2}'''.format(field, value, user_id)
+        self.cursor.execute(sql)
+
+    @sqlquery
+    def delete_user(self, user_id):
+        sql = "DELETE FROM users WHERE id={}".format(user_id)
         self.cursor.execute(sql)
 
     @sqlquery

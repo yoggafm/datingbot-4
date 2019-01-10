@@ -11,6 +11,8 @@ from settings import FLASK_DEBUG, TOKEN, PORT
 app = FlaskAPI(__name__)
 # ongoing registration counter
 onreg = {}
+# ongoing matching counter
+onmatch = {}
 # DB connecctor
 dbc = db.DbConnector()
 
@@ -68,7 +70,7 @@ def processing():
                 # save and finish
                 resp = user.commit()
                 if resp is status.HTTP_200_OK:
-                    clear(user)
+                    clear_onreg(user)
                 else:
                     return 'Server Error', resp  # error
             elif int(answer) > 2:
@@ -77,7 +79,7 @@ def processing():
             else:
                 # abort
                 user.abort()
-                clear(user)
+                clear_onreg(user)
             if FLASK_DEBUG:
                 print("Onreg:")
                 print("---")
@@ -90,8 +92,26 @@ def processing():
                     print("Current step:")
                     pprint(db.qna[onreg[user_id].step])
 
+        if user_id in onmatch:
+            user = onmatch[user_id]
+            match = user.matches[user.match]
+            if '/end' in body:
+                clear_onmatch(user)
+                return 'ok'
+            elif '+' in body:
+                msg = "Скорее напиши {0}! Адрес страницы - vk.com/id{1}. \
+                      Желаю удачи ;)".format(match[1], match[0])
+                vkapi.send_message(user_id, msg)
+                clear_onmatch(user)
+            elif '-' in body:
+                user.match += 1
+                if len(onmatch[user_id].matches) > onmatch[user_id].match:
+                    vkapi.show_current_match()
+                else:
+                    clear_onmatch(user)
+
         else:
-            if '/dating' in body:
+            if '/reg' in body:
                 # init registration for this user
                 onreg[user_id] = vkapi.registration(user_id, dbc)
                 if FLASK_DEBUG:
@@ -99,17 +119,52 @@ def processing():
                     pprint(onreg[user_id])
                     print("DB cache:")
                     pprint(dbc.cache)
+            if '/match' in body:
+                # start matching
+                user = onmatch[user_id] = vkapi.match(user_id, dbc)
+                if FLASK_DEBUG:
+                    print("Adding object to onmatch:")
+                    pprint(onmatch[user_id])
+                if not onmatch[user_id].matches:
+                    clear_onmatch(user)
+            if '/delete' in body:
+                # remove user from db
+                vkapi.delete(user_id, dbc)
         return 'ok'
     return 'unknown'
 
-def clear(user):
-    vkapi.send_message(str(user.user_id), TOKEN, 'До новых встреч!')
+def clear_onreg(user):
+    vkapi.send_message(str(user.user_id), 'До новых встреч!')
     try:
         del dbc.cache[user.user_id]
+    except KeyError as e:
+        if FLASK_DEBUG: print(e)
+        else: pass
+
+    try:
         del onreg[user.user_id]
+    except KeyError as e:
+        if FLASK_DEBUG: print(e)
+        else: pass
+
+    try:
         del user
-    except KeyError:
-        pass
+    except KeyError as e:
+        if FLASK_DEBUG: print(e)
+        else: pass
+
+def clear_onmatch(user):
+    vkapi.send_message(str(user.user_id), 'До новых встреч!')
+    try:
+        del onmatch[user.user_id]
+    except KeyError as e:
+        if FLASK_DEBUG: print(e)
+        else: pass
+    try:
+        del user
+    except KeyError as e:
+        if FLASK_DEBUG: print(e)
+        else: pass
 
 #TODO: move error handlers to errors.py
 @app.errorhandler(500)

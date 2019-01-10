@@ -13,7 +13,7 @@ if FLASK_DEBUG: from pprint import pprint
 session = vk.Session()
 api = vk.API(session, access_token=TOKEN, v=VK_API_VERSION)
 
-def send_message(user_id, token, message, attachment=""):
+def send_message(user_id, message, attachment=""):
     api.messages.send(user_id=str(user_id), message=message,
                       attachment=attachment)
 
@@ -48,7 +48,7 @@ class registration(object):
             options = ''
         msg = '{0}\n{1}\n{2}\n{3}'.format(prefix, question, options, postfix)
         if FLASK_DEBUG: print(msg)
-        send_message(str(self.user_id), TOKEN, msg, attachment)
+        send_message(str(self.user_id), msg, attachment)
 
     def get_name_from_vk(self):
         url = "{}users.get".format(VK_API_URL)
@@ -117,7 +117,7 @@ class registration(object):
                         col = qna[self.step]['user_field']
                         break
                 if answer == '':
-                    send_message(str(self.user_id), TOKEN,\
+                    send_message(str(self.user_id),
                         'Выбери, пожалуйста, из представленных '\
                         'вариантов:{}\nМожешь просто скопипастить'\
                         ' желаемый вариант и отправить, либо '\
@@ -132,6 +132,15 @@ class registration(object):
                 answer = body
                 col = qna[self.step]['user_field']
         if photo:
+            if options:
+                send_message(str(self.user_id),
+                    'Выбери, пожалуйста, из представленных '\
+                    'вариантов:{}\nМожешь просто скопипастить'\
+                    ' желаемый вариант и отправить, либо '\
+                    'только его начало.\nПример: для выборa '\
+                    'варианта "1) Брно" можно отправить: '
+                    '"1) Брно", "Брно", или "1", "1)", "1) Б" '\
+                    'и т.д) '.format('\n'.join(options)))
             # photo
             if type(photo) != dict:
                 if FLASK_DEBUG: print("Bad photo {}".format(photo))
@@ -175,22 +184,22 @@ class registration(object):
             self.dbc.connect()
             self.dbc.create_user(self.user_id)
             self.dbc.save(self.user_id)
+       #TODO error handlers
         except ProgrammingError as err:
             if FLASK_DEBUG: raise(err)
-            send_message(str(self.user_id), TOKEN,
+            send_message(str(self.user_id),
                 'Похоже, ты нашел ошибку у меня в коде, мой друг! ' \
                 'Срочно напиши сюда (id218786773) с как можно более подробным описанием проблемы.')
             return status.HTTP_500_INTERNAL_SERVER_ERROR
         except OperationalError as err:
             if FLASK_DEBUG: raise(err)
-            send_message(str(self.user_id), TOKEN,
+            send_message(str(self.user_id),
                 'Произошла ошибка при сохранении. Попробуй заново через какое-то время.')
             return status.HTTP_500_INTERNAL_SERVER_ERROR
         except IntegrityError as err:
             if FLASK_DEBUG:
                 print("user {} is already registered".format(self.user_id))
-            send_message(str(self.user_id), TOKEN,
-                'Твоя анкета уже есть в базе данных!.')
+            send_message(str(self.user_id), 'Твоя анкета уже есть в базе данных!.')
             # do not return error
         if FLASK_DEBUG: print("End of registration.")
         return status.HTTP_200_OK
@@ -198,12 +207,99 @@ class registration(object):
     def abort(self):
         "Abort registration"
         if FLASK_DEBUG: print("End of registration - aborted.")
-        send_message(str(self.user_id), TOKEN, "Ну и пошел нахуй тогда")
+        send_message(str(self.user_id), "Ну и пошел нахуй тогда")
         return status.HTTP_200_OK
 
     def edit(self):
         #TODO: edit
         if FLASK_DEBUG: print("Updating.")
-        send_message(str(self.user_id), TOKEN, "Not Implemented")
+        send_message(str(self.user_id), "Not Implemented")
         return status.HTTP_501_NOT_IMPLEMENTED
 
+
+class match(object):
+    "Methods related to matching"
+
+    def __init__(self, user_id, dbc, start=True):
+        self.user_id = user_id
+        self.dbc = dbc
+        try:
+            self.dbc.connect()
+            user = self.dbc.get_user(self.user_id)
+            self.dbc.close()
+       #TODO error handlers
+        except ProgrammingError as err:
+            if FLASK_DEBUG: raise(err)
+            send_message(str(self.user_id),
+                'Похоже, ты нашел ошибку у меня в коде, мой друг! ' \
+                'Срочно напиши сюда (id218786773) с как можно более подробным описанием проблемы.')
+            return status.HTTP_500_INTERNAL_SERVER_ERROR
+        except OperationalError as err:
+            if FLASK_DEBUG: raise(err)
+            send_message(str(self.user_id),
+                'Произошла ошибка при сохранении. Попробуй заново через какое-то время.')
+            return status.HTTP_500_INTERNAL_SERVER_ERROR
+        #TODO separate sql queries from db.py
+        self.city_id = user[5]
+        self.goal_id = user[6]
+        self.lookfor_id = user[7]
+        self.gender_id = user[8]
+        self.match = 0
+        self.matches = []
+        if start: self.start()
+
+    def __repr__(self):
+        return "uuid {0} (match {1}, all matches {2})".format(self.user_id,
+            self.match, self.matches)
+
+    def start(self):
+        try:
+            self.dbc.connect()
+            self.matches = self.dbc.get_matches(self.user_id, self.city_id,
+                self.goal_id, self.gender_id, self.lookfor_id)
+            self.dbc.close()
+       #TODO error handlers
+        except ProgrammingError as err:
+            if FLASK_DEBUG: raise(err)
+            send_message(str(self.user_id),
+                'Похоже, ты нашел ошибку у меня в коде, мой друг! ' \
+                'Срочно напиши сюда (id218786773) с как можно более подробным описанием проблемы.')
+            return status.HTTP_500_INTERNAL_SERVER_ERROR
+        except OperationalError as err:
+            if FLASK_DEBUG: raise(err)
+            send_message(str(self.user_id),
+                'Произошла ошибка при сохранении. Попробуй заново через какое-то время.')
+            return status.HTTP_500_INTERNAL_SERVER_ERROR
+        if self.matches:
+            self.show_current_match()
+        else:
+            send_message(self.user_id, "Подходящей для тебя пары пока не было" \
+                " найдено :( Попробуй попозже, может твоя судьба решит" \
+                " зарегаться завтра!")
+
+    def show_current_match(self):
+        name, description, photo = self.matches[self.match]
+        msg = "{0}\n{1}".format(name, description)
+        self.send_message(user_id, msg, photo)
+        self.send_message(user_id, "+/- ?")
+
+
+def delete(user_id, dbc):
+    try:
+        dbc.connect()
+        dbc.delete_user(user_id)
+        dbc.close()
+        send_message(user_id, "Твоя анкета была удалена.\n" \
+            "Спасибо за участие и иди нахуй.")
+       #TODO error handlers
+    except ProgrammingError as err:
+        if FLASK_DEBUG: raise(err)
+        send_message(str(self.user_id),
+            'Похоже, ты нашел ошибку у меня в коде, мой друг! ' \
+            'Срочно напиши сюда (id218786773) с как можно более подробным описанием проблемы.')
+        return status.HTTP_500_INTERNAL_SERVER_ERROR
+    except OperationalError as err:
+        if FLASK_DEBUG: raise(err)
+        send_message(str(self.user_id),
+            'Произошла ошибка при сохранении. Попробуй заново через какое-то время.')
+        return status.HTTP_500_INTERNAL_SERVER_ERROR
