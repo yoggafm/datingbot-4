@@ -109,6 +109,12 @@ def processing():
                     vkapi.show_current_match()
                 else:
                     clear_onmatch(user)
+            if FLASK_DEBUG:
+                print("Onmatch:")
+                print("---")
+                for uid in onmatch:
+                    pprint(onmatch[uid])
+                print("---")
 
         else:
             if '/reg' in body:
@@ -119,7 +125,7 @@ def processing():
                     pprint(onreg[user_id])
                     print("DB cache:")
                     pprint(dbc.cache)
-            if '/match' in body:
+            elif '/match' in body:
                 # start matching
                 user = onmatch[user_id] = vkapi.match(user_id, dbc)
                 if FLASK_DEBUG:
@@ -127,9 +133,18 @@ def processing():
                     pprint(onmatch[user_id])
                 if not onmatch[user_id].matches:
                     clear_onmatch(user)
-            if '/delete' in body:
+            elif '/delete' in body:
                 # remove user from db
                 vkapi.delete(user_id, dbc)
+            elif '/help' in body or body.startswith('/'):
+                # send help
+                vkapi.send_message(user_id, '''Справка по командам:
+                    /reg - зарегестироваться в системе знакомств Брно
+                    и мемовой заговора
+                    /delete - удалиться из системы
+                    /match - посмотреть подходящих тебе людей (мэтчей)
+                    /end - прекратить любую коммуникацию с ботом (работает
+                    посреди регистрации или просмотра мэтчей)''')
         return 'ok'
     return 'unknown'
 
