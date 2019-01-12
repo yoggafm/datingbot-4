@@ -278,10 +278,10 @@ class match(object):
                 " зарегаться завтра!")
 
     def show_current_match(self):
-        name, description, photo = self.matches[self.match]
+        _, name, description, photo = self.matches[self.match]
         msg = "{0}\n{1}".format(name, description)
-        self.send_message(user_id, msg, photo)
-        self.send_message(user_id, "+/- ?")
+        send_message(self.user_id, msg, photo)
+        send_message(self.user_id, "+/- ?")
 
 
 def delete(user_id, dbc):

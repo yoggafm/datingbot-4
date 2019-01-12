@@ -106,8 +106,12 @@ def processing():
             elif '-' in body:
                 user.match += 1
                 if len(onmatch[user_id].matches) > onmatch[user_id].match:
-                    vkapi.show_current_match()
+                    user.show_current_match()
                 else:
+                    msg = "Подходящей для тебя пары пока не было" \
+                        " найдено :( Попробуй попозже, может твоя судьба решит" \
+                        " зарегаться завтра!"
+                    vkapi.send_message(user_id, msg)
                     clear_onmatch(user)
             if FLASK_DEBUG:
                 print("Onmatch:")
