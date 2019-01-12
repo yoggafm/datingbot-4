@@ -227,18 +227,19 @@ class match(object):
             self.dbc.connect()
             user = self.dbc.get_user(self.user_id)
             self.dbc.close()
+            if user is None:
+                send_message(str(self.user_id), 'Ты еще не зарегестрирован!')
+                raise ValueError
        #TODO error handlers
         except ProgrammingError as err:
-            if FLASK_DEBUG: raise(err)
             send_message(str(self.user_id),
                 'Похоже, ты нашел ошибку у меня в коде, мой друг! ' \
                 'Срочно напиши сюда (id218786773) с как можно более подробным описанием проблемы.')
-            return status.HTTP_500_INTERNAL_SERVER_ERROR
+            raise err
         except OperationalError as err:
-            if FLASK_DEBUG: raise(err)
             send_message(str(self.user_id),
                 'Произошла ошибка при сохранении. Попробуй заново через какое-то время.')
-            return status.HTTP_500_INTERNAL_SERVER_ERROR
+            raise err
         #TODO separate sql queries from db.py
         self.city_id = user[5]
         self.goal_id = user[6]

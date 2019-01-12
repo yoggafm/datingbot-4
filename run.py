@@ -45,7 +45,7 @@ def processing():
         if user_id in onreg:
             user = onreg[user_id]
             if '/end' in body:
-                clear(user)
+                clear_onreg(user)
                 return 'ok'
             if len(body):
                 answer = user.validate_answer(body=body)
@@ -123,8 +123,10 @@ def processing():
         else:
             if '/reg' in body:
                 # init registration for this user
-                onreg[user_id] = vkapi.registration(user_id, dbc)
-                if FLASK_DEBUG:
+                user = onreg[user_id] = vkapi.registration(user_id, dbc)
+                if not user:
+                    clear_onreg(user)
+                elif FLASK_DEBUG:
                     print("Adding object to onreg:")
                     pprint(onreg[user_id])
                     print("DB cache:")
@@ -132,11 +134,11 @@ def processing():
             elif '/match' in body:
                 # start matching
                 user = onmatch[user_id] = vkapi.match(user_id, dbc)
-                if FLASK_DEBUG:
+                if not (user and onmatch[user_id].matches):
+                    clear_onmatch(user)
+                elif FLASK_DEBUG:
                     print("Adding object to onmatch:")
                     pprint(onmatch[user_id])
-                if not onmatch[user_id].matches:
-                    clear_onmatch(user)
             elif '/delete' in body:
                 # remove user from db
                 vkapi.delete(user_id, dbc)
