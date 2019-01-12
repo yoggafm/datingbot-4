@@ -1,5 +1,6 @@
 import sqlite3
 import json
+from collections import OrderedDict
 from settings import DB_FILE, QNA_FILE, FLASK_DEBUG
 
 # load question
@@ -178,24 +179,24 @@ class DbConnector(object):
                                      "name":"text"})
         self.create_table("genders", {"id":"integer primary key autoincrement",
                                      "name":"char(1)"})
-        self.create_table("users", {"id":"integer primary key not null",
-                                    "first_name": "text",
-                                    "last_name": "text",
-                                    "description": "text",
-                                    "photo": "text",
-                                    "city_id": "integer",
-                                    "goal_id": "integer",
-                                    "lookfor_id": "integer",
-                                    "gender_id": "integer",
-                                    "foreign key(city_id)": "references cities(id)",
-                                    "foreign key(goal_id)": "references goals(id)",
-                                    "foreign key(lookfor_id)": "references genders(id)",
-                                    "foreign key(gender_id)": "references genders(id)"
-        })
+        users_fields = [("id","integer primary key not null"),
+            ("first_name", "text"),
+            ("last_name", "text"),
+            ("description", "text"),
+            ("photo", "text"),
+            ("city_id", "integer"),
+            ("goal_id", "integer"),
+            ("lookfor_id", "integer"),
+            ("gender_id", "integer"),
+            ("foreign key(city_id)", "references cities(id)"),
+            ("foreign key(goal_id)", "references goals(id)"),
+            ("foreign key(lookfor_id)", "references genders(id)"),
+            ("foreign key(gender_id)", "references genders(id)")]
+        self.create_table("users", OrderedDict(users_fields))
         # insert choices
         for q in qna:
             table = q["table"]
             if table:
                 for value in q["opts"]:
-                    self.insert(table, "name", value[3:])  # strip 'n) ' 
+                    self.insert(table, "name", value[3:].encode("utf-8"))  # strip 'n) ' 
         self.close()
