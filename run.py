@@ -55,7 +55,7 @@ def processing():
 
         if user_id in onreg:
             user = onreg[user_id]
-            if 'end' in body or 'Закончить' in body:
+            if '/end' in body or 'Закончить' in body:
                 clear_onreg(user)
                 return 'ok'
             if len(body):
@@ -106,7 +106,7 @@ def processing():
         if user_id in onmatch:
             user = onmatch[user_id]
             match = user.matches[user.match]
-            if 'end' in body or 'Закончить' in body:
+            if '/end' in body or 'Закончить' in body:
                 clear_onmatch(user)
                 return 'ok'
             elif '+' in body:
@@ -144,7 +144,7 @@ def processing():
                     pprint(onreg[user_id])
                     print("DB cache:")
                     pprint(dbc.cache)
-            elif 'match' in body or 'Поиск' in body:
+            elif '/match' in body or 'Поиск' in body:
                 # start matching
                 user = onmatch[user_id] = vkapi.match(user_id, dbc)
                 if not (user and onmatch[user_id].matches):
@@ -152,17 +152,17 @@ def processing():
                 elif FLASK_DEBUG:
                     print("Adding object to onmatch:")
                     pprint(onmatch[user_id])
-            elif 'delete' in body or 'Удалить свою анкету' in body:
+            elif '/delete' in body or 'Удалить свою анкету' in body:
                 # remove user from db
                 vkapi.delete(user_id, dbc)
-            elif 'help' in body or 'Помощь' in body:
+            elif '/help' in body or 'Помощь' in body:
                 # send help
                 vkapi.send_message(user_id, '''Справка по командам:
-                    reg / Регистрация - зарегестироваться в системе знакомств Брно
+                    /reg / Регистрация - зарегестироваться в системе знакомств Брно
                     и мемовой заговора
-                    delete / Удалить свою анкету - удалиться из системы
-                    match / Поиск - посмотреть подходящих тебе людей (мэтчей)
-                    end / Закончить - прекратить любую коммуникацию с ботом (работает
+                    /delete / Удалить свою анкету - удалиться из системы
+                    /match / Поиск - посмотреть подходящих тебе людей (мэтчей)
+                    /end / Закончить - прекратить любую коммуникацию с ботом (работает
                     посреди регистрации или просмотра мэтчей)''',
                     keyboard={"one_time":True,"buttons":[]})
         return 'ok'
