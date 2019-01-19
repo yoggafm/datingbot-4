@@ -1,4 +1,5 @@
 import os
+import json
 import vk
 from flask import Flask, request, json
 from flask_api import FlaskAPI, status
@@ -25,6 +26,7 @@ if FLASK_DEBUG:
 @app.route('/', methods=['POST'])
 def processing():
     data = request.get_json()
+    payload = body = None
     if FLASK_DEBUG:
         print("REQUEST ", end='')
         pprint(data)
@@ -35,16 +37,25 @@ def processing():
     if data['type'] == 'message_reply':
         return 'reply'
     if data['type'] == 'message_new':
-        if 'object' in data and 'user_id' in data['object'] and \
-                                'body' in data['object']:
+        if 'object' in data and 'user_id' in data['object']:
             user_id = data['object']['user_id']
-            body = data['object']['body'].strip()
+            if 'body' in data['object']:
+                body = data['object']['body'].strip()
+            if 'payload' in data['object']:
+                # keyboard
+                payload =  data['object']['payload']
+                if 'start' in payload:
+                    vkapi.send_message(user_id, "Привет!",
+                        keyboard=settings.COMMANDS_KEYBOARD)
+                    return 'ok'
+            else:
+                payload = None
         else:
             return 'Bad request', status.HTTP_400_BAD_REQUEST
 
         if user_id in onreg:
             user = onreg[user_id]
-            if '/end' in body:
+            if 'end' in body or 'Закончить' in body:
                 clear_onreg(user)
                 return 'ok'
             if len(body):
@@ -95,13 +106,14 @@ def processing():
         if user_id in onmatch:
             user = onmatch[user_id]
             match = user.matches[user.match]
-            if '/end' in body:
+            if 'end' in body or 'Закончить' in body:
                 clear_onmatch(user)
                 return 'ok'
             elif '+' in body:
                 msg = "Скорее напиши {0}! Адрес страницы - vk.com/id{1}. \
                       Желаю удачи ;)".format(match[1], match[0])
-                vkapi.send_message(user_id, msg)
+                vkapi.send_message(user_id, msg,
+                    keyboard={"one_time":True,"buttons":[]})
                 clear_onmatch(user)
             elif '-' in body:
                 user.match += 1
@@ -111,7 +123,8 @@ def processing():
                     msg = "Подходящей для тебя пары пока не было" \
                         " найдено :( Попробуй попозже, может твоя судьба решит" \
                         " зарегаться завтра!"
-                    vkapi.send_message(user_id, msg)
+                    vkapi.send_message(user_id, msg,
+                        keyboard={"one_time":True,"buttons":[]})
                     clear_onmatch(user)
             if FLASK_DEBUG:
                 print("Onmatch:")
@@ -121,7 +134,7 @@ def processing():
                 print("---")
 
         else:
-            if '/reg' in body:
+            if '/reg' in body or 'Регистрация' in body:
                 # init registration for this user
                 user = onreg[user_id] = vkapi.registration(user_id, dbc)
                 if not user:
@@ -131,7 +144,7 @@ def processing():
                     pprint(onreg[user_id])
                     print("DB cache:")
                     pprint(dbc.cache)
-            elif '/match' in body:
+            elif 'match' in body or 'Поиск' in body:
                 # start matching
                 user = onmatch[user_id] = vkapi.match(user_id, dbc)
                 if not (user and onmatch[user_id].matches):
@@ -139,23 +152,25 @@ def processing():
                 elif FLASK_DEBUG:
                     print("Adding object to onmatch:")
                     pprint(onmatch[user_id])
-            elif '/delete' in body:
+            elif 'delete' in body or 'Удалить свою анкету' in body:
                 # remove user from db
                 vkapi.delete(user_id, dbc)
-            elif '/help' in body or body.startswith('/'):
+            elif 'help' in body or 'Помощь' in body:
                 # send help
                 vkapi.send_message(user_id, '''Справка по командам:
-                    /reg - зарегестироваться в системе знакомств Брно
+                    reg - зарегестироваться в системе знакомств Брно
                     и мемовой заговора
-                    /delete - удалиться из системы
-                    /match - посмотреть подходящих тебе людей (мэтчей)
-                    /end - прекратить любую коммуникацию с ботом (работает
-                    посреди регистрации или просмотра мэтчей)''')
+                    delete - удалиться из системы
+                    match - посмотреть подходящих тебе людей (мэтчей)
+                    end - прекратить любую коммуникацию с ботом (работает
+                    посреди регистрации или просмотра мэтчей)''',
+                    keyboard={"one_time":True,"buttons":[]})
         return 'ok'
     return 'unknown'
 
 def clear_onreg(user):
-    vkapi.send_message(str(user.user_id), 'До новых встреч!')
+    vkapi.send_message(str(user.user_id), 'До новых встреч!',
+        keyboard={"one_time":True,"buttons":[]})
     try:
         del dbc.cache[user.user_id]
     except KeyError as e:
@@ -175,7 +190,8 @@ def clear_onreg(user):
         else: pass
 
 def clear_onmatch(user):
-    vkapi.send_message(str(user.user_id), 'До новых встреч!')
+    vkapi.send_message(str(user.user_id), 'До новых встреч!',
+        keyboard={"one_time":True,"buttons":[]})
     try:
         del onmatch[user.user_id]
     except KeyError as e:

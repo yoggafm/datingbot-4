@@ -3,19 +3,24 @@ import random
 import re
 import string
 import os
+import json
 from flask_api import status
 from sqlite3 import IntegrityError, OperationalError, ProgrammingError
 import vk
 from db import qna
-from settings import FLASK_DEBUG, TOKEN, VK_API_VERSION, VK_API_URL
+from settings import *
 if FLASK_DEBUG: from pprint import pprint
 
 session = vk.Session()
 api = vk.API(session, access_token=TOKEN, v=VK_API_VERSION)
 
-def send_message(user_id, message, attachment=""):
-    api.messages.send(user_id=str(user_id), message=message,
-                      attachment=attachment)
+def send_message(user_id, message="", attachment="", keyboard=None):
+    if keyboard:
+        api.messages.send(user_id=str(user_id), message=message,
+            attachment=attachment, keyboard=json.dumps(keyboard, ensure_ascii=False))
+    else:
+        api.messages.send(user_id=str(user_id), message=message,
+            attachment=attachment)
 
 class registration(object):
     "Methods related to dating registration"
@@ -42,13 +47,34 @@ class registration(object):
     def ask_current_question(self, prefix='', postfix='', attachment=''):
         question = qna[self.step]['question']
         options = qna[self.step]['opts']
+        keyboard = {
+            "one_time":False,
+            "buttons":[
+                [{"action":{
+                    "type":"text",
+                    "payload": "{\"button\": \"0\"}",
+                    "label": "Закончить"
+                    },
+                 "color":"default"
+                 }]]
+        }
         if type(options) == list:
-            options = '\n'.join(options)
+            msg = '{0}\n{1}\n{2}\n{3}'.format(prefix, question,
+                '\n'.join(options), postfix)
+            for i in range(len(options)):
+                num = i+1
+                keyboard['buttons'][0].append(
+                    {"action":{
+                        "type":"text",
+                        "payload": "{\"button\": \"" + str(num) + "\"}",
+                        "label": str(num)
+                        },
+                     "color":"default"
+                    })
         elif not options:
-            options = ''
-        msg = '{0}\n{1}\n{2}\n{3}'.format(prefix, question, options, postfix)
-        if FLASK_DEBUG: print(msg)
-        send_message(str(self.user_id), msg, attachment)
+            msg = '{0}\n{1}\n{2}'.format(prefix, question, postfix)
+        if FLASK_DEBUG: print(msg, keyboard)
+        send_message(str(self.user_id), msg, attachment, keyboard)
 
     def get_name_from_vk(self):
         url = "{}users.get".format(VK_API_URL)
@@ -153,7 +179,7 @@ class registration(object):
                 for key in photo_keys]))
             # upload to vk, returns photo<owner_id>_<photo_id>
             answer = self.upload_photo(photo[max_key])
- 
+
         if FLASK_DEBUG: print("You chose variant \"{0}\"".format(answer))
         return answer
 
@@ -176,8 +202,8 @@ class registration(object):
         self.dbc.close()
         text = "{0}, {1}\n{2}".format(first_name, city, description)
         if FLASK_DEBUG: print(text); print(photo)
-        return text, photo 
-        
+        return text, photo
+       
     def commit(self):
         "Commit changes from cache to db"
         try:
@@ -234,11 +260,13 @@ class match(object):
         except ProgrammingError as err:
             send_message(str(self.user_id),
                 'Похоже, ты нашел ошибку у меня в коде, мой друг! ' \
-                'Срочно напиши сюда (id218786773) с как можно более подробным описанием проблемы.')
+                'Срочно напиши сюда (id218786773) с как можно более подробным описанием проблемы.',
+                keyboard={"one_time":True,"buttons":[]})
             raise err
         except OperationalError as err:
             send_message(str(self.user_id),
-                'Произошла ошибка при сохранении. Попробуй заново через какое-то время.')
+                'Произошла ошибка при сохранении. Попробуй заново через какое-то время.',
+                keyboard={"one_time":True,"buttons":[]})
             raise err
         #TODO separate sql queries from db.py
         self.city_id = user[5]
@@ -264,25 +292,49 @@ class match(object):
             if FLASK_DEBUG: raise(err)
             send_message(str(self.user_id),
                 'Похоже, ты нашел ошибку у меня в коде, мой друг! ' \
-                'Срочно напиши сюда (id218786773) с как можно более подробным описанием проблемы.')
+                'Срочно напиши сюда (id218786773) с как можно более подробным описанием проблемы.',
+                keyboard={"one_time":True,"buttons":[]})
             return status.HTTP_500_INTERNAL_SERVER_ERROR
         except OperationalError as err:
             if FLASK_DEBUG: raise(err)
             send_message(str(self.user_id),
-                'Произошла ошибка при сохранении. Попробуй заново через какое-то время.')
+                'Произошла ошибка при сохранении. Попробуй заново через какое-то время.',
+                keyboard={"one_time":True,"buttons":[]})
             return status.HTTP_500_INTERNAL_SERVER_ERROR
         if self.matches:
             self.show_current_match()
         else:
             send_message(self.user_id, "Подходящей для тебя пары пока не было" \
                 " найдено :( Попробуй попозже, может твоя судьба решит" \
-                " зарегаться завтра!")
+                " зарегаться завтра!",
+                keyboard={"one_time":True,"buttons":[]})
 
     def show_current_match(self):
         _, name, description, photo = self.matches[self.match]
         msg = "{0}\n{1}".format(name, description)
         send_message(self.user_id, msg, photo)
-        send_message(self.user_id, "+/- ?")
+        keyaboard = {
+            "one_time":False,
+            "buttons": [
+              [{
+                "action": {
+                  "type": "text",
+                  "payload": "{\"button\": \"1\"}",
+                  "label": "+"
+                },
+                "color": "default"
+              },
+             {
+                "action": {
+                  "type": "text",
+                  "payload": "{\"button\": \"2\"}",
+                  "label": "-"
+                },
+                "color": "default"
+              }]
+            ]
+        }
+        send_message(self.user_id, "+/- ?", keyboard=keyboard)
 
 
 def delete(user_id, dbc):
@@ -291,16 +343,19 @@ def delete(user_id, dbc):
         dbc.delete_user(user_id)
         dbc.close()
         send_message(user_id, "Твоя анкета была удалена.\n" \
-            "Спасибо за участие и иди нахуй.")
+            "Спасибо за участие и иди нахуй.",
+            keyboard={"one_time":True,"buttons":[]})
        #TODO error handlers
     except ProgrammingError as err:
         if FLASK_DEBUG: raise(err)
         send_message(str(self.user_id),
             'Похоже, ты нашел ошибку у меня в коде, мой друг! ' \
-            'Срочно напиши сюда (id218786773) с как можно более подробным описанием проблемы.')
+            'Срочно напиши сюда (id218786773) с как можно более подробным описанием проблемы.',
+            keyboard={"one_time":True,"buttons":[]})
         return status.HTTP_500_INTERNAL_SERVER_ERROR
     except OperationalError as err:
         if FLASK_DEBUG: raise(err)
         send_message(str(self.user_id),
-            'Произошла ошибка при сохранении. Попробуй заново через какое-то время.')
+            'Произошла ошибка при сохранении. Попробуй заново через какое-то время.',
+            keyboard={"one_time":True,"buttons":[]})
         return status.HTTP_500_INTERNAL_SERVER_ERROR
