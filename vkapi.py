@@ -313,7 +313,7 @@ class match(object):
         _, name, description, photo = self.matches[self.match]
         msg = "{0}\n{1}".format(name, description)
         send_message(self.user_id, msg, photo)
-        keyaboard = {
+        keyboard = {
             "one_time":False,
             "buttons": [
               [{
