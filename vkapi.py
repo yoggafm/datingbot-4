@@ -225,8 +225,11 @@ class registration(object):
         except IntegrityError as err:
             if FLASK_DEBUG:
                 print("user {} is already registered".format(self.user_id))
-            send_message(str(self.user_id), 'Твоя анкета уже есть в базе данных!.')
+            send_message(str(self.user_id), 'Твоя анкета уже есть в базе данных!')
             # do not return error
+        else:
+            send_message(str(self.user_id), 'Спасибо за регистрацию! Воспользуйся командой "Поиск", чтобы просмотреть людей, которых я для тебя подберу.')
+            
         if FLASK_DEBUG: print("End of registration.")
         return status.HTTP_200_OK
 
@@ -249,33 +252,38 @@ class match(object):
     def __init__(self, user_id, dbc, start=True):
         self.user_id = user_id
         self.dbc = dbc
+        self.city_id = None
+        self.goal_id = None
+        self.lookfor_id = None
+        self.gender_id = None
+        self.match = 0
+        self.matches = []
+
         try:
             self.dbc.connect()
             user = self.dbc.get_user(self.user_id)
             self.dbc.close()
             if user is None:
                 send_message(str(self.user_id), 'Ты еще не зарегестрирован!')
-                raise ValueError
+                #raise ValueError
        #TODO error handlers
         except ProgrammingError as err:
             send_message(str(self.user_id),
                 'Похоже, ты нашел ошибку у меня в коде, мой друг! ' \
                 'Срочно напиши сюда (id218786773) с как можно более подробным описанием проблемы.',
                 keyboard={"one_time":True,"buttons":[]})
-            raise err
+            #raise err
         except OperationalError as err:
             send_message(str(self.user_id),
                 'Произошла ошибка при сохранении. Попробуй заново через какое-то время.',
                 keyboard={"one_time":True,"buttons":[]})
-            raise err
-        #TODO separate sql queries from db.py
-        self.city_id = user[5]
-        self.goal_id = user[6]
-        self.lookfor_id = user[7]
-        self.gender_id = user[8]
-        self.match = 0
-        self.matches = []
-        if start: self.start()
+        else:
+            #TODO separate sql queries from db.py
+            self.city_id = user[5]
+            self.goal_id = user[6]
+            self.lookfor_id = user[7]
+            self.gender_id = user[8]
+            if start: self.start()
 
     def __repr__(self):
         return "uuid {0} (match {1}, all matches {2})".format(self.user_id,
@@ -339,23 +347,31 @@ class match(object):
 
 def delete(user_id, dbc):
     try:
+        # check if user exists
+        dbc.connect()
+        user = dbc.get_user(user_id)
+        dbc.close()
+        if user is None:
+            send_message(str(user_id), 'Ты еще не зарегестрирован!')
+            return status.HTTP_404_NOT_FOUND
         dbc.connect()
         dbc.delete_user(user_id)
         dbc.close()
         send_message(user_id, "Твоя анкета была удалена.\n" \
             "Спасибо за участие и иди нахуй.",
             keyboard={"one_time":True,"buttons":[]})
+        return status.HTTP_200_OK
        #TODO error handlers
     except ProgrammingError as err:
         if FLASK_DEBUG: raise(err)
-        send_message(str(self.user_id),
+        send_message(str(user_id),
             'Похоже, ты нашел ошибку у меня в коде, мой друг! ' \
             'Срочно напиши сюда (id218786773) с как можно более подробным описанием проблемы.',
             keyboard={"one_time":True,"buttons":[]})
         return status.HTTP_500_INTERNAL_SERVER_ERROR
     except OperationalError as err:
         if FLASK_DEBUG: raise(err)
-        send_message(str(self.user_id),
+        send_message(str(user_id),
             'Произошла ошибка при сохранении. Попробуй заново через какое-то время.',
             keyboard={"one_time":True,"buttons":[]})
         return status.HTTP_500_INTERNAL_SERVER_ERROR

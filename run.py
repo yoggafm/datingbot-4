@@ -147,7 +147,7 @@ def processing():
             elif '/match' in body or 'Поиск' in body:
                 # start matching
                 user = onmatch[user_id] = vkapi.match(user_id, dbc)
-                if not (user and onmatch[user_id].matches):
+                if not onmatch[user_id].matches:
                     clear_onmatch(user)
                 elif FLASK_DEBUG:
                     print("Adding object to onmatch:")
@@ -158,13 +158,12 @@ def processing():
             elif '/help' in body or 'Помощь' in body:
                 # send help
                 vkapi.send_message(user_id, '''Справка по командам:
-                    /reg / Регистрация - зарегестироваться в системе знакомств Брно
-                    и мемовой заговора
-                    /delete / Удалить свою анкету - удалиться из системы
-                    /match / Поиск - посмотреть подходящих тебе людей (мэтчей)
-                    /end / Закончить - прекратить любую коммуникацию с ботом (работает
-                    посреди регистрации или просмотра мэтчей)''',
-                    keyboard={"one_time":True,"buttons":[]})
+                    "/reg" или "Регистрация" - зарегестироваться в системе знакомств Брно и мемовой заговора
+                    "/delete" или "Удалить свою анкету" - удалиться из системы
+                    "/match" или "Поиск" - посмотреть подходящих тебе людей (мэтчей)
+                    "/end" или "Закончить" - прекратить любую коммуникацию с ботом (работает посреди регистрации или просмотра мэтчей),
+                    "/help" или "Помощь" - выведет это сообщение и клавиатуру с доступными командами''',
+                     keyboard=settings.COMMANDS_KEYBOARD)
         return 'ok'
     return 'unknown'
 

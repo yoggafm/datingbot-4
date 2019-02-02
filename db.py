@@ -198,5 +198,5 @@ class DbConnector(object):
             table = q["table"]
             if table:
                 for value in q["opts"]:
-                    self.insert(table, "name", value[3:].encode("utf-8"))  # strip 'n) ' 
+                    self.insert(table, "name", value[3:])  # strip 'n) ' 
         self.close()
