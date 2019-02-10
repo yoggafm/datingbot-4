@@ -134,7 +134,7 @@ def processing():
                 print("---")
 
         else:
-            if '/reg' in body or 'Регистрация' in body:
+            if 'reg' in body.lower() or 'регистрация' in body.lower():
                 # init registration for this user
                 user = onreg[user_id] = vkapi.registration(user_id, dbc)
                 if not user:
@@ -144,7 +144,7 @@ def processing():
                     pprint(onreg[user_id])
                     print("DB cache:")
                     pprint(dbc.cache)
-            elif '/match' in body or 'Поиск' in body:
+            elif 'match' in body.lower() or 'поиск' in body.lower():
                 # start matching
                 user = onmatch[user_id] = vkapi.match(user_id, dbc)
                 if not onmatch[user_id].matches:
@@ -152,10 +152,10 @@ def processing():
                 elif FLASK_DEBUG:
                     print("Adding object to onmatch:")
                     pprint(onmatch[user_id])
-            elif '/delete' in body or 'Удалить свою анкету' in body:
+            elif 'delete' in body.lower() or 'удалить свою анкету' in body.lower():
                 # remove user from db
                 vkapi.delete(user_id, dbc)
-            elif '/help' in body or 'Помощь' in body:
+            elif 'help' in body or 'Помощь' in body:
                 # send help
                 vkapi.send_message(user_id, '''Справка по командам:
                     "/reg" или "Регистрация" - зарегестироваться в системе знакомств Брно и мемовой заговора
