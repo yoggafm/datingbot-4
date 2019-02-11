@@ -114,6 +114,20 @@ class DbConnector(object):
         return matches
 
     @sqlquery
+    def get_confirmed_matches(self, user_id):
+        sql = '''SELECT match_id as id, first_name, description, photo
+            FROM matches WHERE user_id = {}'''.format(user_id)
+        self.cursor.execute(sql)
+        matches = self.cursor.fetchall()
+        return matches
+
+    @sqlquery
+    def add_confirmed_match(self, user_id, match_id):
+        sql = '''INSERT INTO  matches (user_id, match_id)
+            VALUES ({0}, {1})'''.format(user_id, match_id)
+        self.cursor.execute(sql)
+
+    @sqlquery
     def get_user(self, user_id):
         sql = "SELECT * FROM users WHERE id = {}".format(user_id)
         self.cursor.execute(sql)
@@ -199,4 +213,21 @@ class DbConnector(object):
             if table:
                 for value in q["opts"]:
                     self.insert(table, "name", value[3:])  # strip 'n) ' 
+        self.close()
+
+    def test_users(self):
+        ''' Fill DB with 100 fake users '''
+        self.connect()
+        for i in range(100):
+            self.create_user(i)
+            data = {"first_name":"Test"+str(i),
+                    "last_name":"Test"+str(i),
+                    "description":"test",
+                    "photo":"photo218786773_456239630",
+                    "city_id":i%2+1,
+                    "goal_id":i%3+1,
+                    "lookfor_id":i%3+1,
+                    "gender_id":i%3+1}
+            for key in data:
+                self.update_user(i, key, data[key])
         self.close()

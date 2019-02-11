@@ -55,7 +55,7 @@ def processing():
 
         if user_id in onreg:
             user = onreg[user_id]
-            if '/end' in body or 'закончить' in body.lower():
+            if 'end' in body or 'закончить' in body.lower():
                 clear_onreg(user)
                 return 'ok'
             if len(body):
@@ -106,7 +106,7 @@ def processing():
         if user_id in onmatch:
             user = onmatch[user_id]
             match = user.matches[user.match]
-            if '/end' in body or 'закончить' in body.lower():
+            if 'end' in body or 'закончить' in body.lower():
                 clear_onmatch(user)
                 return 'ok'
             elif '+' in body:
@@ -158,11 +158,11 @@ def processing():
             elif 'help' in body or 'помощь' in body.lower():
                 # send help
                 vkapi.send_message(user_id, '''Справка по командам:
-                    "/reg" или "Регистрация" - зарегестироваться в системе знакомств Брно и мемовой заговора
-                    "/delete" или "Удалить свою анкету" - удалиться из системы
-                    "/match" или "Поиск" - посмотреть подходящих тебе людей (мэтчей)
-                    "/end" или "Закончить" - прекратить любую коммуникацию с ботом (работает посреди регистрации или просмотра мэтчей),
-                    "/help" или "Помощь" - выведет это сообщение и клавиатуру с доступными командами''',
+                    "reg" или "Регистрация" - зарегестироваться в системе знакомств Брно и мемовой заговора
+                    "delete" или "Удалить свою анкету" - удалиться из системы
+                    "match" или "Поиск" - посмотреть подходящих тебе людей (мэтчей)
+                    "end" или "Закончить" - прекратить любую коммуникацию с ботом (работает посреди регистрации или просмотра мэтчей),
+                    "help" или "Помощь" - выведет это сообщение и клавиатуру с доступными командами''',
                      keyboard=settings.COMMANDS_KEYBOARD)
         return 'ok'
     return 'unknown'
