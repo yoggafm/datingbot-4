@@ -286,8 +286,8 @@ class match(object):
             if start: self.start()
 
     def __repr__(self):
-        return "uuid {0} (match {1}, all matches {2})".format(self.user_id,
-            self.match, self.matches)
+        return "uuid {0} (match {1} {2}, all matches {3})".format(self.user_id,
+            self.match, self.matches[self.match][1], self.matches)
 
     def start(self):
         try:
@@ -316,6 +316,18 @@ class match(object):
                 " найдено :( Попробуй попозже, может твоя судьба решит" \
                 " зарегаться завтра!",
                 keyboard={"one_time":True,"buttons":[]})
+
+    def next(self):
+        self.match += 1
+        if len(self.matches) > self.match:
+            self.show_current_match()
+            return 1
+        else:
+            msg = "Подходящей для тебя пары пока не было" \
+                  " найдено :( Попробуй попозже, может твоя судьба решит" \
+                  " зарегаться завтра!"
+            send_message(self.user_id, msg, keyboard={"one_time":True,"buttons":[]})
+            return 0
 
     def show_current_match(self):
         _, name, description, photo = self.matches[self.match]

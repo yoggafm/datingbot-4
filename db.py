@@ -115,16 +115,27 @@ class DbConnector(object):
 
     @sqlquery
     def get_confirmed_matches(self, user_id):
-        sql = '''SELECT match_id as id, first_name, description, photo
-            FROM matches WHERE user_id = {}'''.format(user_id)
+        sql = '''SELECT match_id as id FROM matches
+            WHERE user_id = {}'''.format(user_id)
         self.cursor.execute(sql)
-        matches = self.cursor.fetchall()
+        rows = self.cursor.fetchall()
+        matches = []
+        for row in rows:
+            if len(row) > 0:
+                matches.append(row[0])
         return matches
 
     @sqlquery
     def add_confirmed_match(self, user_id, match_id):
         sql = '''INSERT INTO  matches (user_id, match_id)
             VALUES ({0}, {1})'''.format(user_id, match_id)
+        self.cursor.execute(sql)
+
+    @sqlquery
+    def remove_confirmed_match(self, user_id, match_id):
+        sql = '''DELETE FROM matches
+            WHERE user_id = {0},
+            match_id = {1}'''.format(user_id, match_id)
         self.cursor.execute(sql)
 
     @sqlquery

@@ -106,25 +106,38 @@ def processing():
         if user_id in onmatch:
             user = onmatch[user_id]
             match = user.matches[user.match]
+            match_id = match[0]
+            match_name = match[1]
             if 'end' in body or 'закончить' in body.lower():
                 clear_onmatch(user)
                 return 'ok'
             elif '+' in body:
-                msg = "Скорее напиши {0}! Адрес страницы - vk.com/id{1}. \
-                      Желаю удачи ;)".format(match[1], match[0])
-                vkapi.send_message(user_id, msg,
-                    keyboard={"one_time":True,"buttons":[]})
-                clear_onmatch(user)
-            elif '-' in body:
-                user.match += 1
-                if len(onmatch[user_id].matches) > onmatch[user_id].match:
-                    user.show_current_match()
-                else:
-                    msg = "Подходящей для тебя пары пока не было" \
-                        " найдено :( Попробуй попозже, может твоя судьба решит" \
-                        " зарегаться завтра!"
+                # add to confirmed matches
+                dbc.connect()
+                dbc.add_confirmed_match(user_id, match_id)
+                dbc.close()
+                # check if its mutual
+                dbc.connect()
+                matches_list = dbc.get_confirmed_matches(match_id) or []
+                print(matches_list)
+                dbc.close()
+                if user_id in matches_list:
+                    msg = "Скорее напиши {0}! Адрес страницы - vk.com/id{1}. \
+                           Желаю удачи ;)\nДля возобновления поиска воспользуйся \
+                           командой «Поиск»".format(match_name, match_id)
                     vkapi.send_message(user_id, msg,
                         keyboard={"one_time":True,"buttons":[]})
+                    clear_onmatch(user)
+                elif not user.next():
+                    # end of matches list
+                    clear_onmatch(user)
+            elif '-' in body:
+                # delete from confirmed matches
+                dbc.connect()
+                dbc.add_confirmed_match(user_id, match_id)
+                dbc.close()
+                if not user.next():
+                    # end of matches list
                     clear_onmatch(user)
             if FLASK_DEBUG:
                 print("Onmatch:")
