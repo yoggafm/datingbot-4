@@ -134,7 +134,7 @@ def processing():
             elif '-' in body:
                 # delete from confirmed matches
                 dbc.connect()
-                dbc.add_confirmed_match(user_id, match_id)
+                dbc.remove_confirmed_match(user_id, match_id)
                 dbc.close()
                 if not user.next():
                     # end of matches list
