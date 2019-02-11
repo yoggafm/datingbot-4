@@ -164,7 +164,7 @@ def processing():
                     clear_onmatch(user)
                 elif FLASK_DEBUG:
                     print("Adding object to onmatch:")
-                    pprint(onmatch[user_id])
+                    print(user)
             elif 'delete' in body.lower() or 'удалить свою анкету' in body.lower():
                 # remove user from db
                 vkapi.delete(user_id, dbc)

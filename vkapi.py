@@ -279,10 +279,12 @@ class match(object):
                 keyboard={"one_time":True,"buttons":[]})
         else:
             #TODO separate sql queries from db.py
-            self.city_id = user[5]
-            self.goal_id = user[6]
-            self.lookfor_id = user[7]
-            self.gender_id = user[8]
+            self.dbc.connect()
+            self.city_id = self.dbc.get_city(user_id)
+            self.goal_id = self.dbc.get_goal(user_id)
+            self.lookfor_id = self.dbc.get_lookfor(user_id)
+            self.gender_id = self.dbc.get_gender(user_id)
+            self.dbc.close()
             if start: self.start()
 
     def __repr__(self):
@@ -292,8 +294,15 @@ class match(object):
     def start(self):
         try:
             self.dbc.connect()
-            self.matches = self.dbc.get_matches(self.user_id, self.city_id,
-                self.goal_id, self.gender_id, self.lookfor_id)
+            if self.city_id and self.goal_id and self.gender_id and self.lookfor_id:
+                self.matches = self.dbc.get_matches(self.user_id, self.city_id,
+                                                    self.goal_id, self.gender_id, self.lookfor_id)
+            else:
+                self.matches = None
+                send_message(self.user_id, "Подходящей для тебя пары пока не было" \
+                    " найдено :( Попробуй попозже, может твоя судьба решит" \
+                    " зарегаться завтра!",
+                keyboard={"one_time":True,"buttons":[]})
             self.dbc.close()
        #TODO error handlers
         except ProgrammingError as err:

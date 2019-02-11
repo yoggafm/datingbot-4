@@ -162,10 +162,32 @@ class DbConnector(object):
         self.cursor.execute(sql)
 
     @sqlquery
+    def get_city(self, user_id):
+        sql = '''SELECT city_id FROM users
+            WHERE id={}'''.format(user_id)
+        self.cursor.execute(sql)
+        city_id = self.cursor.fetchone()
+        if city_id:
+            return city_id[0]
+        else:
+            return None
+
+    @sqlquery
     def set_city(self, user_id, city_id):
         sql = '''UPDATE users SET city_id={0}
             WHERE id={1}'''.format(city_id, user_id)
         self.cursor.execute(sql)
+
+    @sqlquery
+    def get_goal(self, user_id):
+        sql = '''SELECT goal_id FROM users
+            WHERE id={}'''.format(user_id)
+        self.cursor.execute(sql)
+        goal_id = self.cursor.fetchone()
+        if goal_id:
+            return goal_id[0]
+        else:
+            return None
 
     @sqlquery
     def set_goal(self, user_id, goal_id):
@@ -174,10 +196,32 @@ class DbConnector(object):
         self.cursor.execute(sql)
 
     @sqlquery
+    def get_lookfor(self, user_id):
+        sql = '''SELECT lookfor_id FROM users
+            WHERE id={}'''.format(user_id)
+        self.cursor.execute(sql)
+        lookfor_id = self.cursor.fetchone()
+        if lookfor_id:
+            return lookfor_id[0]
+        else:
+            return None
+
+    @sqlquery
     def set_lookfor(self, user_id, lookfor_id):
         sql = '''UPDATE users SET lookfor_id={0}
             WHERE id={1}'''.format(lookfor_id, user_id)
         self.cursor.execute(sql)
+
+    @sqlquery
+    def get_gender(self, user_id):
+        sql = '''SELECT gender_id FROM users
+            WHERE id={}'''.format(user_id)
+        self.cursor.execute(sql)
+        gender_id = self.cursor.fetchone()
+        if gender_id:
+            return gender_id[0]
+        else:
+            return None
 
     @sqlquery
     def set_description(self, user_id, desc):
