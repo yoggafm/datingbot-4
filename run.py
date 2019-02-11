@@ -55,7 +55,7 @@ def processing():
 
         if user_id in onreg:
             user = onreg[user_id]
-            if '/end' in body or 'Закончить' in body:
+            if '/end' in body or 'закончить' in body.lower():
                 clear_onreg(user)
                 return 'ok'
             if len(body):
@@ -106,7 +106,7 @@ def processing():
         if user_id in onmatch:
             user = onmatch[user_id]
             match = user.matches[user.match]
-            if '/end' in body or 'Закончить' in body:
+            if '/end' in body or 'закончить' in body.lower():
                 clear_onmatch(user)
                 return 'ok'
             elif '+' in body:
@@ -155,7 +155,7 @@ def processing():
             elif 'delete' in body.lower() or 'удалить свою анкету' in body.lower():
                 # remove user from db
                 vkapi.delete(user_id, dbc)
-            elif 'help' in body or 'Помощь' in body:
+            elif 'help' in body or 'помощь' in body.lower():
                 # send help
                 vkapi.send_message(user_id, '''Справка по командам:
                     "/reg" или "Регистрация" - зарегестироваться в системе знакомств Брно и мемовой заговора
