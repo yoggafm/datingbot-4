@@ -55,18 +55,24 @@ def processing():
 
         if user_id in onreg:
             user = onreg[user_id]
+            answer_text = ''
+            answer_photo = ''
             if 'end' in body or 'закончить' in body.lower():
                 clear_onreg(user)
                 return 'ok'
             if len(body):
-                answer = user.validate_answer(body=body)
-            elif 'attachments' in data['object']:
+                #answer = user.validate_answer(body=body)
+                # has text
+                answer_text = body
+            if 'attachments' in data['object']:
                 # attachment
                 if 'photo' in data['object']['attachments'][0]:
-                    photo = data['object']['attachments'][0]['photo']
-                    answer = user.validate_answer(photo=photo)
-            if answer is status.HTTP_404_NOT_FOUND:
-                return 'Not Found', answer
+                    # has photo
+                    answer_photo = data['object']['attachments'][0]['photo']
+                    #answer = user.validate_answer(photo=photo)
+            answer = user.validate_answer(body=answer_text, photo=answer_photo)
+            if answer is '':
+                return 'Not Found'
 
             if  user.step < len(db.qna)-1:
                 user.process_answer(answer)

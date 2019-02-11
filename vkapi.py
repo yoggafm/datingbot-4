@@ -142,17 +142,6 @@ class registration(object):
                         answer = opt[:1]
                         col = qna[self.step]['user_field']
                         break
-                if answer == '':
-                    send_message(str(self.user_id),
-                        'Выбери, пожалуйста, из представленных '\
-                        'вариантов:{}\nМожешь просто скопипастить'\
-                        ' желаемый вариант и отправить, либо '\
-                        'только его начало.\nПример: для выборa '\
-                        'варианта "1) Брно" можно отправить: '
-                        '"1) Брно", "Брно", или "1", "1)", "1) Б" '\
-                        'и т.д) '.format('\n'.join(options)))
-                    if FLASK_DEBUG: print("Illigitimate answer {}".format(body))
-                    return status.HTTP_404_NOT_FOUND
             else:
                 # free text
                 answer = body
@@ -167,6 +156,7 @@ class registration(object):
                     'варианта "1) Брно" можно отправить: '
                     '"1) Брно", "Брно", или "1", "1)", "1) Б" '\
                     'и т.д) '.format('\n'.join(options)))
+                return ''
             # photo
             if type(photo) != dict:
                 if FLASK_DEBUG: print("Bad photo {}".format(photo))
@@ -181,6 +171,20 @@ class registration(object):
             answer = self.upload_photo(photo[max_key])
 
         if FLASK_DEBUG: print("You chose variant \"{0}\"".format(answer))
+        if answer == '':
+            if options:
+                msg = 'Выбери, пожалуйста, из представленных '\
+                    'вариантов:{}\nМожешь просто скопипастить'\
+                    ' желаемый вариант и отправить, либо '\
+                    'только его начало.\nПример: для выборa '\
+                    'варианта "1) Брно" можно отправить: '\
+                    '"1) Брно", "Брно", или "1", "1)", "1) Б" '\
+                    'и т.д) '.format('\n'.join(options))
+            else:
+                msg = 'Твой ответ не подходит, ты точно это имел '\
+                    'в виду то, что написал? Попробуй еще раз.'
+            send_message(str(self.user_id), msg)
+            if FLASK_DEBUG: print("Illigitimate answer {}".format(body))
         return answer
 
     def process_answer(self, answer):
