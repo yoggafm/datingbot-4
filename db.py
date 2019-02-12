@@ -134,7 +134,7 @@ class DbConnector(object):
     @sqlquery
     def remove_confirmed_match(self, user_id, match_id):
         sql = '''DELETE FROM matches
-            WHERE user_id = {0},
+            WHERE user_id = {0} AND
             match_id = {1}'''.format(user_id, match_id)
         self.cursor.execute(sql)
 
